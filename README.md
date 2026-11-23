@@ -1,81 +1,90 @@
 # 🌿 Urban Air Quality Assistant
 
-A Streamlit web app that helps people explore air quality in a city, view a 48-hour pollutant forecast, and understand readings in plain language.
+A Streamlit application that helps people explore city air quality, understand pollutant readings, and identify a lower-AQI time window in the next 48 hours.
 
 ## Features
 
-- Search for a city or town.
-- Display current European AQI, PM2.5, PM10, and other pollutant readings when available.
-- Explore an hourly 48-hour outlook.
-- Show simple, general activity guidance based on the reported European AQI.
-- Optional Gemini-powered explainer for questions about the readings.
+- City search with input validation and clear no-result handling.
+- Current European AQI, PM2.5, PM10, and other pollutant readings where supplied by the data source.
+- Interactive 48-hour forecast chart and data table.
+- General health-awareness guidance based on European AQI.
+- Three-hour lower-AQI outdoor window recommendation when forecast AQI values are available.
+- Optional Gemini-powered plain-language explainer.
+- Cached API responses to reduce repeated requests.
+- Automated unit tests and GitHub Actions quality checks.
 
-## Platform and technology
+## Technology
 
-- **Platform:** Streamlit
-- **Language:** Python
-- **Data:** Open-Meteo Geocoding API and Air Quality API
-- **Optional AI assistant:** Google Gemini through the Google Gen AI SDK
+- Python and Streamlit
+- Open-Meteo Geocoding API and Air Quality API
+- Pandas and Requests
+- Google Gemini via Google Gen AI SDK (optional)
 
-The basic air-quality dashboard does not require an API key.
+The dashboard does not require a Gemini API key. The optional AI explainer requires a secret named `GOOGLE_API_KEY`.
 
 ## Run locally
 
-1. Install Python 3.10 or newer.
-2. Clone this repository:
+Requires Python 3.10 or newer.
 
-   `git clone https://github.com/leelasreeamrutha99-glitch/urban-air-quality-assistant.git`
+```bash
+git clone https://github.com/leelasreeamrutha99-glitch/urban-air-quality-assistant.git
+cd urban-air-quality-assistant
+python -m venv .venv
+```
 
-3. Open the project folder:
+Activate the virtual environment, then run:
 
-   `cd urban-air-quality-assistant`
+```bash
+python -m pip install -r requirements.txt
+streamlit run app.py
+```
 
-4. Install dependencies:
+## Run tests
 
-   `pip install -r requirements.txt`
+```bash
+pytest -q
+python -m compileall -q app.py air_quality.py tests
+```
 
-5. Start the app:
+Tests cover input validation, API response handling, AQI guidance, forecast parsing, and lower-AQI window calculation. GitHub Actions runs tests and syntax checks on pushes and pull requests to `main`.
 
-   `streamlit run app.py`
-
-6. Open the local URL shown in the terminal (usually http://localhost:8501).
-
-## Enable the optional Gemini assistant
+## Configure Gemini (optional)
 
 1. Create an API key in [Google AI Studio](https://aistudio.google.com/).
-2. Set it as an environment variable named `GOOGLE_API_KEY`.
+2. In Streamlit Community Cloud, open the app's **Settings → Secrets** and add:
 
-   **Windows PowerShell**
-   ```powershell
-   $env:GOOGLE_API_KEY="your_api_key_here"
-   streamlit run app.py
-   ```
+```toml
+GOOGLE_API_KEY = "your_api_key_here"
+```
 
-   **macOS / Linux**
-   ```bash
-   export GOOGLE_API_KEY="your_api_key_here"
-   streamlit run app.py
-   ```
+For local development, set the `GOOGLE_API_KEY` environment variable. Never commit API keys or paste them into source code.
 
-   Never commit API keys or paste them into source code.
+## Deploy
 
-## Deploy on Streamlit Community Cloud
+1. Open [Streamlit Community Cloud](https://share.streamlit.io/).
+2. Select this repository, branch `main`, and entry point `app.py`.
+3. Deploy the app.
+4. Add `GOOGLE_API_KEY` in the app's Secrets only if you want Gemini enabled.
 
-1. Sign in to [Streamlit Community Cloud](https://share.streamlit.io/).
-2. Choose **New app** and connect this GitHub repository.
-3. Select the `main` branch and `app.py` as the entry point.
-4. Deploy. If using Gemini, add `GOOGLE_API_KEY` under the app's Secrets settings.
+## Data quality, safety, and limitations
 
-## Data and limitations
+- Air-quality values and forecasts come from Open-Meteo and depend on upstream model availability.
+- Forecasts are estimates and can differ from local ground-monitoring stations.
+- The lower-AQI window compares values within the returned forecast; it does not guarantee safe air or provide medical advice.
+- AQI scales differ by country. This project labels and interprets the European AQI field.
+- The app is for education and general awareness, not diagnosis, treatment, or emergency advice. Follow official local alerts.
 
-- Air-quality data is supplied by Open-Meteo and depends on upstream model availability.
-- Forecast values are estimates and may differ from local monitoring stations.
-- AQI interpretation varies by country and index. This starter app uses the European AQI scale for its general guidance.
-- This project is for awareness and education only, not medical diagnosis or emergency advice.
+## Accessibility and security practices
 
-## Possible Prompt Wars enhancements
+- Form controls have explicit labels and helper text.
+- Key information is available as text and a data table, not only through a chart or colour.
+- Input length and coordinate ranges are validated.
+- API calls use timeouts; unexpected upstream failures are logged server-side and shown as safe, generic messages.
+- API credentials are read from environment variables or Streamlit secrets and are never displayed.
+- API data is cached for bounded periods to reduce repeated requests.
 
-- Add a map with multiple city comparisons.
-- Add a cleanest-time-to-go-out recommendation.
-- Add user-selected sensitivity profiles and accessible explanations.
-- Add charts comparing locations and downloadable reports.
+## Further improvements
+
+- Add a map and side-by-side city comparisons.
+- Add localization and AQI scale selection for different countries.
+- Add downloadable reports and test with screen readers and keyboard-only navigation.
