@@ -44,6 +44,29 @@ def get_gemini_key() -> str | None:
         return os.getenv("GOOGLE_API_KEY")
 
 
+def describe_aqi(aqi) -> str:
+    """Return a plain-language text alternative to the numeric AQI metric."""
+    if aqi is None:
+        return "The current European AQI value is not available."
+    try:
+        value = float(aqi)
+    except (TypeError, ValueError, OverflowError):
+        return "The current European AQI value is not available."
+    if value <= 20:
+        level = "good"
+    elif value <= 40:
+        level = "fair"
+    elif value <= 60:
+        level = "moderate"
+    elif value <= 80:
+        level = "poor"
+    elif value <= 100:
+        level = "very poor"
+    else:
+        level = "extremely poor"
+    return f"The current European AQI is {value:g}, classified as {level} on the European AQI scale."
+
+
 st.title("🌿 Urban Air Quality Assistant")
 st.write(
     "Explore air quality by city, understand pollutant readings, and find a lower-AQI "
@@ -90,12 +113,12 @@ except Exception:
 place_label = ", ".join(
     part for part in (place.get("name"), place.get("admin1"), place.get("country")) if part
 )
-st.subheader(place_label)
+st.subheader(f"Air quality for {place_label}")
 st.caption(f"Coordinates: {place['latitude']:.3f}, {place['longitude']:.3f}")
 
 current = air.get("current") or {}
 units = air.get("current_units") or {}
-st.subheader("Current air quality")
+st.subheader("Current air quality readings")
 metric_keys = ("european_aqi", "pm2_5", "pm10", "nitrogen_dioxide")
 metric_columns = st.columns(4)
 for column, key in zip(metric_columns, metric_keys):
@@ -105,7 +128,9 @@ for column, key in zip(metric_columns, metric_keys):
     display_value = "Not available" if value is None else f"{value:g} {unit}".strip()
     column.metric(label, display_value)
 
-st.markdown("**What these readings mean**")
+# Keep a plain-language equivalent so meaning is not conveyed by colour or a visual metric alone.
+st.markdown("**Air-quality summary**")
+st.write(describe_aqi(current.get("european_aqi")))
 st.info(advice_for(current.get("european_aqi")))
 st.caption("Guidance uses the European AQI scale. Follow official local alerts and medical advice.")
 
@@ -121,7 +146,7 @@ else:
             f"{cleanest} (lowest average European AQI over three consecutive forecast hours)."
         )
     else:
-        st.info("A time window cannot be calculated because forecast AQI values are missing.")
+        st.info("A time window cannot be calculated because consecutive forecast AQI values are missing.")
 
     available = [
         key for key in ("european_aqi", "pm2_5", "pm10", "nitrogen_dioxide", "ozone")
@@ -133,14 +158,25 @@ else:
             options=available,
             format_func=lambda key: POLLUTANTS[key][0],
         )
-        chart = forecast.set_index("time")[[selected_pollutant]].rename(
+        chart_data = forecast.set_index("time")[[selected_pollutant]].rename(
             columns={selected_pollutant: POLLUTANTS[selected_pollutant][0]}
         )
-        st.line_chart(chart, y_label=POLLUTANTS[selected_pollutant][1] or "Index")
+        st.markdown(f"**Chart: {POLLUTANTS[selected_pollutant][0]} by hour**")
+        st.line_chart(chart_data, y_label=POLLUTANTS[selected_pollutant][1] or "Index")
+        st.caption(
+            "Text alternative: the table below contains the exact hourly values shown in the chart. "
+            "Use the table if you cannot access the chart visually."
+        )
+
     display_forecast = forecast.rename(
         columns={key: POLLUTANTS[key][0] for key in forecast.columns if key in POLLUTANTS}
     )
-    st.dataframe(display_forecast, use_container_width=True, hide_index=True)
+    st.dataframe(
+        display_forecast,
+        use_container_width=True,
+        hide_index=True,
+        column_config={"time": st.column_config.DatetimeColumn("Forecast time", format="ddd, DD MMM HH:mm")},
+    )
 
 st.subheader("Ask the AI air-quality explainer")
 st.write(
